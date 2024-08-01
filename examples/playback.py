@@ -75,6 +75,9 @@ def main():
             depth_image = cv2.normalize(depth_data, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
             depth_image = cv2.applyColorMap(depth_image, cv2.COLORMAP_JET)
             color_image = get_color_frame(frames)
+            
+            print(color_image.shape, depth_image.shape)
+            
             # if you want to add IR frame, it's the same as color
             if depth_image is not None:
                 images.append(depth_image)

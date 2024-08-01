@@ -76,6 +76,7 @@ def main(argv):
             print(e)
     try:
         pipeline.start(config)
+        pipeline.start_recording("./test.bag")
     except Exception as e:
         print(e)
         return
@@ -112,6 +113,7 @@ def main(argv):
             if key == ord('q') or key == ESC_KEY:
                 break
         except KeyboardInterrupt:
+            pipeline.stop_recording()
             break
     pipeline.stop()
 
