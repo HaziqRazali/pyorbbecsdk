@@ -13,7 +13,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 # ******************************************************************************
-import os
 import sys
 
 import cv2
@@ -54,80 +53,13 @@ def main():
     camera_param = pipeline.get_camera_param()
     print("Camera param: ", camera_param)
     pipeline.start()
-    
-    frames_list = []
     try:
         while True:
-            frames: FrameSet = pipeline.wait_for_frames(5000)
-            if frames is None:
-                continue
-            frames_list.append(frames)
-            key = cv2.waitKey(1000)
-            if key == ord('q') or key == ESC_KEY:
-                break
-    except KeyboardInterrupt:
-        if pipeline:
-            pipeline.stop()
-    print(len(frames_list))
-    
-    for i,frames in enumerate(frames_list):
-        
-        # get depth frame
-        depth_frame = frames.get_depth_frame()
-        if depth_frame is None:
-            print(f"Frame {i} has missing depth")
-            continue
-        # get color frame
-        color_image = get_color_frame(frames)
-        if color_image is None:
-            print(f"Frame {i} has missing color")
-            continue
-            
-        images = []
-        height = depth_frame.get_height()
-        width  = depth_frame.get_width()
-        scale  = depth_frame.get_depth_scale()
-            
-        depth_data = np.frombuffer(depth_frame.get_data(), dtype=np.uint16)
-        depth_data_raw = depth_data.reshape((height, width))         
-        depth_image = depth_data_raw.astype(np.float32) * scale
-        depth_image = cv2.normalize(depth_image, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
-        depth_image = cv2.applyColorMap(depth_image, cv2.COLORMAP_JET)
-        color_image = get_color_frame(frames)
-                
-        print("Depth", height, width, scale)
-        print("Color", color_image.shape)
-                
-        if 1:
-            cv2.imwrite(f"./data/depth_raw/{i}.png",depth_data_raw)
-            cv2.imwrite(f"./data/depth_image/{i}.png",depth_image)
-            cv2.imwrite(f"./data/color/{i}.png",color_image)
-            cv2.waitKey(1)
-    
-        # if you want to add IR frame, it's the same as color
-        if depth_image is not None:
-            images.append(depth_image)
-        if color_image is not None:
-            images.append(color_image)
-        if len(images) > 0:
-            images_to_show = []
-            for img in images:
-                img = cv2.resize(img, (640, 480))
-                images_to_show.append(img)
-            cv2.imshow("playbackViewer", np.hstack(images_to_show))
-        key = cv2.waitKey(1)
-        print(i)
-    
-    """
-    i = 0
-    try:
-        while True:
-            frames: FrameSet = pipeline.wait_for_frames(5000)
+            frames = pipeline.wait_for_frames(100)
             if frames is None:
                 continue
             depth_frame = frames.get_depth_frame()
             if depth_frame is None:
-                print(f"Frame {i} has missing depth")
                 continue
             images = []
             width = depth_frame.get_width()
@@ -140,12 +72,6 @@ def main():
             depth_image = cv2.normalize(depth_data, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
             depth_image = cv2.applyColorMap(depth_image, cv2.COLORMAP_JET)
             color_image = get_color_frame(frames)
-            
-            if 1:
-                cv2.imwrite(f"./results/depth/{i}.png",depth_image)
-                cv2.imwrite(f"./results/color/{i}.png",color_image)
-                cv2.waitKey(1000)
-            
             # if you want to add IR frame, it's the same as color
             if depth_image is not None:
                 images.append(depth_image)
@@ -157,16 +83,14 @@ def main():
                     img = cv2.resize(img, (640, 480))
                     images_to_show.append(img)
                 cv2.imshow("playbackViewer", np.hstack(images_to_show))
-            key = cv2.waitKey(1000)
-            print(i)
-            i += 1
+            key = cv2.waitKey(1)
             if key == ord('q') or key == ESC_KEY:
                 break
     except KeyboardInterrupt:
         if pipeline:
             pipeline.stop()
         sys.exit(0)
-    """
+
 
 if __name__ == "__main__":
     main()

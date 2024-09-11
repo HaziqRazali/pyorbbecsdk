@@ -25,6 +25,7 @@ save_points_dir = os.path.join(os.getcwd(), "point_clouds")
 if not os.path.exists(save_points_dir):
     os.mkdir(save_points_dir)
 
+"""
 def save_points_to_ply(frames: FrameSet, camera_param: OBCameraParam) -> int:
     if frames is None:
         return 0
@@ -33,11 +34,8 @@ def save_points_to_ply(frames: FrameSet, camera_param: OBCameraParam) -> int:
     if depth_frame is None:
         return 0
     
-    print(type(depth_frame))
-    sys.exit()
-    
     #print(depth_data.shape) #(2073600,)
-    width = depth_frame.get_width()              # 1920
+    width  = depth_frame.get_width()              # 1920
     height = depth_frame.get_height()           # 1080
     print(width, height)
     sys.exit()
@@ -70,7 +68,34 @@ def save_points_to_ply(frames: FrameSet, camera_param: OBCameraParam) -> int:
     sys.exit()
 
     return 1
+"""
 
+def save_points_to_ply(frames: FrameSet, camera_param: OBCameraParam) -> int:
+    
+    if frames is None:
+        return 0
+    depth_frame = frames.get_depth_frame()
+    if depth_frame is None:
+        return 0
+    depth_data = np.frombuffer(depth_frame.get_data(), dtype=np.uint16)
+    width  = depth_frame.get_width()              # 1920
+    height = depth_frame.get_height()           # 1080
+    print(width, height, depth_data.shape)
+    sys.exit()
+        
+    points = frames.get_point_cloud(camera_param)
+    if len(points) == 0:
+        print("no depth points")
+        return 0
+
+    # Create a structured numpy array directly from points assuming it's a list of lists
+    points_array = np.array([tuple(point) for point in points], dtype=[('x', 'f4'), ('y', 'f4'), ('z', 'f4')])
+    points_filename = os.path.join(save_points_dir, "points_{}.ply".format(depth_frame.get_timestamp()))
+
+    el = PlyElement.describe(points_array, 'vertex')
+    PlyData([el], text=True).write(points_filename)
+
+    return 1
 
 def save_color_points_to_ply(frames: FrameSet, camera_param: OBCameraParam) -> int:
     if frames is None:
@@ -115,7 +140,7 @@ def main():
     depth_width = depth_profile.get_width()
     depth_height = depth_profile.get_height()
     print(f"Depth resolution: {depth_width} x {depth_height}") # [640, 576]
-    print("depth profile: ", depth_profile)                                           # depth profile:  <VideoStreamProfile: 640x576@15>
+    print("depth profile: ", depth_profile) # depth profile:  <VideoStreamProfile: 640x576@15>
     
     config.enable_stream(depth_profile)
     try:
@@ -125,7 +150,7 @@ def main():
             color_width = color_profile.get_width()
             color_height = color_profile.get_height()
             print(f"Color resolution: {color_width} x {color_height}") # [1920, 1080]
-            print("color profile: ", color_profile)                                         # color profile:  <VideoStreamProfile: 1920x1080@15>
+            print("color profile: ", color_profile) # color profile:  <VideoStreamProfile: 1920x1080@15>
             config.enable_stream(color_profile)
             
             if device_pid == 0x066B: 
@@ -153,6 +178,17 @@ def main():
             if frames is None:
                 continue
             camera_param = pipeline.get_camera_param()
+            
+            #print(camera_param)
+            """
+            <OBCameraParam depth_intrinsic < fx=1123.87fy = 1123.03 cx =948.027 cy=539.649 width=1920 height=1080 > 
+             depth_distortion < k1=0.0733382 k2=-0.101789 k3=0.041689 k4=0 k5=0 k6=0 p1=-0.000472246 p2=-0.00022513 > 
+             rgb_intrinsic < fx=1123.87fy = 1123.03 cx =948.027 cy=539.649 width=1920 height=1080 > 
+             rgb_distortion < k1=0.0733382 k2=-0.101789 k3=0.041689 k4=0 k5=0 k6=0 p1=-0.000472246 p2=-0.00022513 > 
+             transform < rot=[1, 0, 0, 0, 1, 0, 0, 0, 1]
+             transform=[0, 0, 0] 
+            """
+            
             saved_depth_cnt += save_points_to_ply(frames, camera_param)
             if has_color_sensor:
                 saved_color_cnt += save_color_points_to_ply(frames, camera_param)

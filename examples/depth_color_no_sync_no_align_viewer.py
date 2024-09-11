@@ -39,65 +39,33 @@ def main(argv):
     args = parser.parse_args()
     align_mode = args.mode
     enable_sync = args.enable_sync
+    
+    print(f"device_pid: {device_pid}, align_mode: {align_mode}, enable_sync: {enable_sync}") # device_pid: 1643, align_mode: HW, enable_sync: True
+    #sys.exit()
+    
     try:
-        
-        """
         profile_list = pipeline.get_stream_profile_list(OBSensorType.COLOR_SENSOR)
-        for i in range(len(profile_list)):
-            profile = profile_list.get_video_stream_profile(i)
-            print("Profile {}: Format = {}".format(i, profile.get_format()))
-        sys.exit()
-        """
-        
-        # # # # # # # # # # # # # # # # # #
-        # get and set color profile list  #
-        # # # # # # # # # # # # # # # # # #
-        
-        # get color profile_list
-        profile_list = pipeline.get_stream_profile_list(OBSensorType.COLOR_SENSOR)
-        #09/12 03:20:56.596796][info][376419][VideoSensor.cpp:386]  - {type: OB_STREAM_COLOR, format: OB_FORMAT_BGRA, width: 2560, height: 1440, fps: 30}
-        #09/12 03:20:56.596799][info][376419][VideoSensor.cpp:386]  - {type: OB_STREAM_COLOR, format: OB_FORMAT_BGRA, width: 2560, height: 1440, fps: 25}
-        
-        if 1:
-            # set a different color profile list
-            color_profile = profile_list.get_video_stream_profile(1280, 720, OBFormat.MJPG, 15)
-            config.enable_stream(color_profile)
-            
-        if 0:
-            # set default color profile list
-            color_profile = profile_list.get_default_video_stream_profile()
-            config.enable_stream(color_profile)
-        
-        # # # # # # # # # # # # # # # # # #
-        # get and set depth profile list  #
-        # # # # # # # # # # # # # # # # # ##
-        
-        # get depth profile
+        color_profile = profile_list.get_default_video_stream_profile()
+        config.enable_stream(color_profile)
         profile_list = pipeline.get_stream_profile_list(OBSensorType.DEPTH_SENSOR)
         assert profile_list is not None
-        #09/12 03:20:56.597067][info][376419][VideoSensor.cpp:386]  - {type: OB_STREAM_DEPTH, format: OB_FORMAT_Y16, width: 640, height: 576, fps: 15}
-        #09/12 03:20:56.597069][info][376419][VideoSensor.cpp:386]  - {type: OB_STREAM_DEPTH, format: OB_FORMAT_Y16, width: 1024, height: 1024, fps: 15}
-        
-        # set depth profile
         depth_profile = profile_list.get_default_video_stream_profile()
         assert depth_profile is not None
-        
-        # color profile : 1920x1080@15_OBFormat.MJPG
         print("color profile : {}x{}@{}_{}".format(color_profile.get_width(),
                                                    color_profile.get_height(),
                                                    color_profile.get_fps(),
                                                    color_profile.get_format()))
-        # depth profile : 640x576@15_OBFormat.Y16
         print("depth profile : {}x{}@{}_{}".format(depth_profile.get_width(),
                                                    depth_profile.get_height(),
                                                    depth_profile.get_fps(),
                                                    depth_profile.get_format()))
-        sys.exit()
-                                                   
         config.enable_stream(depth_profile)
     except Exception as e:
         print(e)
         return
+    
+    # disable align
+    """
     if align_mode == 'HW':
         if device_pid == 0x066B:
             # Femto Mega does not support hardware D2C, and it is changed to software D2C
@@ -108,11 +76,17 @@ def main(argv):
         config.set_align_mode(OBAlignMode.SW_MODE)
     else:
         config.set_align_mode(OBAlignMode.DISABLE)
+    """
+        
+    # disable sync
+    """
     if enable_sync:
         try:
             pipeline.enable_frame_sync()
         except Exception as e:
             print(e)
+    """
+            
     try:
         pipeline.start(config)
         pipeline.start_recording("./test.bag")
@@ -121,6 +95,7 @@ def main(argv):
         return
     while True:
         try:
+            
             frames: FrameSet = pipeline.wait_for_frames(100)
             if frames is None:
                 continue
@@ -132,13 +107,16 @@ def main(argv):
             if color_image is None:
                 print("failed to convert frame to image")
                 continue
+            print(f"color_image: {color_image.shape}")
+                
             depth_frame = frames.get_depth_frame()
             if depth_frame is None:
                 continue
 
-            width = depth_frame.get_width()
+            width  = depth_frame.get_width()
             height = depth_frame.get_height()
-            scale = depth_frame.get_depth_scale()
+            scale  = depth_frame.get_depth_scale()
+            print(f"depth width, height, scale: {width}, {height}, {scale}")
 
             depth_data = np.frombuffer(depth_frame.get_data(), dtype=np.uint16)
             depth_data = depth_data.reshape((height, width))

@@ -81,8 +81,8 @@ if __name__ == "__main__":
     """
     
     # load point cloud
-    point_cloud_filenames = sorted(glob(os.path.join("./point_clouds","*")))
-    point_cloud = o3d.io.read_point_cloud(point_cloud_filenames[80])
+    point_cloud_filenames = sorted(glob(os.path.join("./data/point_clouds","*")))
+    point_cloud = o3d.io.read_point_cloud(point_cloud_filenames[4])
     o3d.visualization.draw_geometries([point_cloud])
     
     #loaded_points = np.loadtxt("./point_clouds/point_cloud.csv", delimiter=',', skiprows=1)

@@ -21,8 +21,19 @@ import numpy as np
 from plyfile import PlyData, PlyElement
 
 from pyorbbecsdk import *
+from utils import frame_to_bgr_image
 
 ESC_KEY = 27
+
+def get_color_frame(frames):
+    color_frame = frames.get_color_frame()
+    if color_frame is None:
+        return None
+    color_image = frame_to_bgr_image(color_frame)
+    if color_image is None:
+        print("failed to convert frame to image")
+        return None
+    return color_image
 
 def print_methods(obj):
     methods = [method for method in dir(obj) if callable(getattr(obj, method)) and not method.startswith("__")]
@@ -37,7 +48,7 @@ def playback_state_callback(state):
     elif state == OBMediaState.OB_MEDIA_PAUSED:
         print("Bag player paused")
 
-save_points_dir = os.path.join(os.getcwd(), "point_clouds")
+save_points_dir = os.path.join(os.getcwd(), "data/point_clouds")
 if not os.path.exists(save_points_dir):
     os.mkdir(save_points_dir)
 
@@ -48,6 +59,15 @@ def save_points_to_ply(frames: FrameSet, camera_param: OBCameraParam) -> int:
 
     depth_frame = frames.get_depth_frame()
     if depth_frame is None:
+        return 0
+
+    width  = depth_frame.get_width()    # 1920
+    height = depth_frame.get_height()   # 1080
+    print(width, height)
+    sys.exit()
+
+    color_image = get_color_frame(frames)
+    if color_image is None:
         return 0
 
     points = frames.get_point_cloud(camera_param)
@@ -87,14 +107,37 @@ def main():
     """
     
     frames_list = []
-    i = 0
     try:
         while True:
-            frames = pipeline.wait_for_frames(100)
+            frames: FrameSet = pipeline.wait_for_frames(5000)
             if frames is None:
                 continue
             frames_list.append(frames)
-            key = cv2.waitKey(1)
+            key = cv2.waitKey(1000)
+            if key == ord('q') or key == ESC_KEY:
+                break
+    except KeyboardInterrupt:
+        if pipeline:
+            pipeline.stop()
+    print("Finished loading frames.")
+    print(len(frames_list))
+    
+    # Stop the pipeline after loading frames
+    pipeline.stop()
+    
+    """frames_list = []
+    i = 0
+    try:
+        while True:
+            frames = pipeline.wait_for_frames(5000)
+            if frames is None:
+                continue
+            depth_frame = frames.get_depth_frame()
+            if depth_frame is None:
+                print(f"Frame {i} has missing depth")
+                continue
+            frames_list.append(frames)
+            key = cv2.waitKey(1000)
             print(f"Loading Frame {i}")
             i += 1
             if key == ord('q') or key == ESC_KEY:
@@ -103,13 +146,13 @@ def main():
     except KeyboardInterrupt:
         print("Loading stopped by user.")
     print("Finished loading frames.")
+    print(len(frames_list))"""
     
-    # Stop the pipeline after loading frames
-    pipeline.stop()
-
     for i in range(len(frames_list)):
         print(f"Processing Frame {i}")
-        save_points_to_ply(frames_list[i], camera_param)
+        status = save_points_to_ply(frames_list[i], camera_param)
+        if status == 0:
+            print(f"Frame {i} has missing depth or color")
     sys.exit()
 
     """
