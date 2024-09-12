@@ -24,6 +24,7 @@ ESC_KEY = 27
 def main():
     pipeline = Pipeline()
     config = Config()
+    
     # enable depth stream
     try:
         profile_list = pipeline.get_stream_profile_list(OBSensorType.DEPTH_SENSOR)
@@ -35,6 +36,7 @@ def main():
     except Exception as e:
         print(e)
         return
+    
     # enable color stream
     try:
         profile_list = pipeline.get_stream_profile_list(OBSensorType.COLOR_SENSOR)
@@ -50,15 +52,18 @@ def main():
     pipeline.start_recording("./test.bag")
     while True:
         try:
+            
             frames = pipeline.wait_for_frames(100)
             if frames is None:
                 continue
+            
             depth_frame = frames.get_depth_frame()
             if depth_frame is None:
                 continue
-            width = depth_frame.get_width()
-            height = depth_frame.get_height()
-            scale = depth_frame.get_depth_scale()
+            
+            width   = depth_frame.get_width()
+            height  = depth_frame.get_height()
+            scale   = depth_frame.get_depth_scale()
 
             depth_data = np.frombuffer(depth_frame.get_data(), dtype=np.uint16)
             depth_data = depth_data.reshape((height, width))
