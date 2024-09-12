@@ -48,12 +48,12 @@ def main(argv):
         #09/12 03:20:56.596796][info][376419][VideoSensor.cpp:386]  - {type: OB_STREAM_COLOR, format: OB_FORMAT_BGRA, width: 2560, height: 1440, fps: 30}
         #09/12 03:20:56.596799][info][376419][VideoSensor.cpp:386]  - {type: OB_STREAM_COLOR, format: OB_FORMAT_BGRA, width: 2560, height: 1440, fps: 25}
         
-        if 0:
+        if 1:
             # set a different color profile list
             color_profile = profile_list.get_video_stream_profile(1280, 720, OBFormat.MJPG, 15)
             config.enable_stream(color_profile)
             
-        if 1:
+        if 0:
             # set default color profile list
             color_profile = profile_list.get_default_video_stream_profile()
             config.enable_stream(color_profile)

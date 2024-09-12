@@ -55,24 +55,29 @@ def main():
     pipeline.start()
     try:
         while True:
+            
             frames = pipeline.wait_for_frames(100)
             if frames is None:
                 continue
+            
             depth_frame = frames.get_depth_frame()
             if depth_frame is None:
                 continue
-            images = []
-            width = depth_frame.get_width()
-            height = depth_frame.get_height()
-            scale = depth_frame.get_depth_scale()
-
+                
+            width   = depth_frame.get_width()
+            height  = depth_frame.get_height()
+            scale   = depth_frame.get_depth_scale()
+            #print(f"width: {width}, height: {height}, scale: {scale}")
+            
             depth_data = np.frombuffer(depth_frame.get_data(), dtype=np.uint16)
             depth_data = depth_data.reshape((height, width))
             depth_data = depth_data.astype(np.float32) * scale
             depth_image = cv2.normalize(depth_data, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
             depth_image = cv2.applyColorMap(depth_image, cv2.COLORMAP_JET)
             color_image = get_color_frame(frames)
+            
             # if you want to add IR frame, it's the same as color
+            images = []
             if depth_image is not None:
                 images.append(depth_image)
             if color_image is not None:
@@ -85,6 +90,7 @@ def main():
                 cv2.imshow("playbackViewer", np.hstack(images_to_show))
             key = cv2.waitKey(1)
             if key == ord('q') or key == ESC_KEY:
+                pipeline.stop()
                 break
     except KeyboardInterrupt:
         if pipeline:
