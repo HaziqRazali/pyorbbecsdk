@@ -77,6 +77,7 @@ def main():
         if depth_frame is None:
             print(f"Frame {i} has missing depth")
             continue
+            
         # get color frame
         color_image = get_color_frame(frames)
         if color_image is None:

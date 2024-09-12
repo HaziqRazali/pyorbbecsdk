@@ -52,28 +52,28 @@ save_points_dir = os.path.join(os.getcwd(), "data/point_clouds")
 if not os.path.exists(save_points_dir):
     os.mkdir(save_points_dir)
 
-def save_points_to_ply(frames: FrameSet, camera_param: OBCameraParam) -> int:
+def save_points_to_ply(frames: FrameSet, camera_param: OBCameraParam, i) -> int:
     
     if frames is None:
         return 0
 
     depth_frame = frames.get_depth_frame()
     if depth_frame is None:
-        return 0
+        print(f"Frame {i} has no depth image")
+        return
 
     width  = depth_frame.get_width()    # 1920
     height = depth_frame.get_height()   # 1080
-    print(width, height)
-    sys.exit()
 
     color_image = get_color_frame(frames)
     if color_image is None:
-        return 0
+        print(f"Frame {i} has no color image")
+        return
 
     points = frames.get_point_cloud(camera_param)
     if len(points) == 0:
-        print("no depth points")
-        return 0
+        print(f"Frame {i} has no depth points")
+        return
 
     # Create a structured numpy array directly from points assuming it's a list of lists
     points_array = np.array([tuple(point) for point in points], dtype=[('x', 'f4'), ('y', 'f4'), ('z', 'f4')])
@@ -81,8 +81,6 @@ def save_points_to_ply(frames: FrameSet, camera_param: OBCameraParam) -> int:
 
     el = PlyElement.describe(points_array, 'vertex')
     PlyData([el], text=True).write(points_filename)
-    
-    return 1
 
 def main():
     pipeline = Pipeline("./test.bag")
@@ -150,9 +148,7 @@ def main():
     
     for i in range(len(frames_list)):
         print(f"Processing Frame {i}")
-        status = save_points_to_ply(frames_list[i], camera_param)
-        if status == 0:
-            print(f"Frame {i} has missing depth or color")
+        save_points_to_ply(frames_list[i], camera_param, i)
     sys.exit()
 
     """
