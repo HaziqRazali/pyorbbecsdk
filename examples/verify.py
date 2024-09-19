@@ -1,14 +1,16 @@
 import os
 import cv2
+import argparse
 import numpy as np
 import open3d as o3d
 
 from glob import glob
 
 import sys
-sys.path.insert(0, "/home/haziq/datasets/collab_ai/my_scripts/")
-from utils import *
+#sys.path.insert(0, "/home/haziq/datasets/collab_ai/my_scripts/")
+#from utils import *
 
+"""
 def undistort_depth_image(depth_image, intrinsic, dist_coeffs):
     # Camera matrix
     K = np.array([[intrinsic['fx'], 0, intrinsic['cx']],
@@ -41,8 +43,16 @@ def visualize_point_cloud(points):
     
     # Visualize the point cloud
     o3d.visualization.draw_geometries([point_cloud])
+"""
 
 if __name__ == "__main__":
+    
+    # python examples/verify.py --folder_name "./data/recording1_unified/point_cloud/" --n 6
+    
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--folder_name", type=str, required=True)
+    parser.add_argument("--n", type=int, required=True)
+    args = parser.parse_args()
     
     """
     # load depth image
@@ -81,7 +91,7 @@ if __name__ == "__main__":
     """
     
     # load point cloud
-    point_cloud_filenames = sorted(glob(os.path.join("./data/point_clouds","*")))
+    point_cloud_filenames = sorted(glob(os.path.join(args.folder_name,"*")))
     point_cloud = o3d.io.read_point_cloud(point_cloud_filenames[4])
     o3d.visualization.draw_geometries([point_cloud])
     

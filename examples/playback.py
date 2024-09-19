@@ -64,11 +64,13 @@ def main():
             frames_list.append(frames)
             key = cv2.waitKey(1000)
             if key == ord('q') or key == ESC_KEY:
+                pipeline.stop()
                 break
     except KeyboardInterrupt:
         if pipeline:
             pipeline.stop()
-    print(len(frames_list))
+    print(f"Finished loading {len(frames_list)} frames")
+    pipeline.stop()
     
     for i,frames in enumerate(frames_list):
         
