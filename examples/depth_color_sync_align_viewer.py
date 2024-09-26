@@ -31,6 +31,7 @@ def main(argv):
     parser = argparse.ArgumentParser()
     parser.add_argument("-m", "--mode", help="align mode, HW=hardware mode,SW=software mode,NONE=disable align", type=str, default='HW')
     parser.add_argument("-s", "--enable_sync", help="enable sync", action="store_false", default=True)
+    parser.add_argument("--save_filename", type=str, required=True)
     args = parser.parse_args()
     align_mode  = args.mode
     enable_sync = args.enable_sync
@@ -125,7 +126,7 @@ def main(argv):
     
     try:
         pipeline.start(config)
-        pipeline.start_recording("./test.bag")
+        pipeline.start_recording(args,save_filename)
     except Exception as e:
         print(e)
         return
