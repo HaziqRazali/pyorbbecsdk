@@ -107,7 +107,9 @@ def main(argv):
     elif align_mode == 'SW':
         config.set_align_mode(OBAlignMode.SW_MODE)
     else:
-        pass
+        print("Cannot align!")
+        sys.exit()
+        #pass
         #config.set_align_mode(OBAlignMode.DISABLE)
     
     """
@@ -126,10 +128,13 @@ def main(argv):
     
     try:
         pipeline.start(config)
-        pipeline.start_recording(args,save_filename)
+        pipeline.start_recording(args.save_filename)
     except Exception as e:
         print(e)
         return
+    
+    camera_param = pipeline.get_camera_param()
+    print("Camera param: ", camera_param)
     
     while True:
         try:

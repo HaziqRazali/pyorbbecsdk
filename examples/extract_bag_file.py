@@ -18,7 +18,7 @@ import sys
 import cv2
 import argparse
 import concurrent.futures
-
+import datetime
 import numpy as np
 from pathlib import Path
 from plyfile import PlyData, PlyElement
@@ -107,6 +107,11 @@ def process_frame(i, frames, camera_param, save_folder):
     points_filename = os.path.join(save_folder, "point_cloud", f"{depth_frame.get_timestamp()}.ply")
     el = PlyElement.describe(points_array, 'vertex')
     PlyData([el], text=True).write(points_filename)
+    
+    print(depth_frame.get_timestamp())
+    timestamp_seconds = depth_frame.get_timestamp() / 1e6  # Convert to seconds
+    readable_time = datetime.datetime.utcfromtimestamp(timestamp_seconds)
+    print(readable_time)
 
     # save depth
     depth_data  = np.frombuffer(depth_frame.get_data(), dtype=np.uint16)

@@ -64,6 +64,7 @@ def sync_mode_from_str(sync_mode_str: str) -> OBMultiDeviceSyncMode:
 
 
 def on_new_frame_callback(frames: FrameSet, index: int):
+    
     global color_frames_queue, depth_frames_queue
     global MAX_QUEUE_SIZE
     assert index < MAX_DEVICES
@@ -78,16 +79,14 @@ def on_new_frame_callback(frames: FrameSet, index: int):
             depth_frames_queue[index].get()
         depth_frames_queue[index].put(depth_frame)
 
-
 def rendering_frames():
+    
     global color_frames_queue, depth_frames_queue
     global curr_device_cnt
     global stop_rendering
+    
     while not stop_rendering:
         for i in range(curr_device_cnt):
-            
-            #i = 1
-            #sys.exit()
             
             color_frame = None
             depth_frame = None
@@ -98,13 +97,13 @@ def rendering_frames():
             if not depth_frames_queue[i].empty():
                 depth_frame = depth_frames_queue[i].get()
             
-            #print(i, type(color_frame), type(depth_frame))
             if color_frame is None and depth_frame is None:
                 continue
                 
             color_image = None
             depth_image = None
             color_width, color_height = 0, 0
+            
             if color_frame is not None:
                 color_width, color_height = (
                     color_frame.get_width(),
@@ -131,10 +130,14 @@ def rendering_frames():
                 color_image = cv2.resize(color_image, window_size)
                 depth_image = cv2.resize(depth_image, window_size)
                 image = np.hstack((color_image, depth_image))
+                
             elif depth_image is not None and not has_color_sensor[i]:
                 image = depth_image
+                
             else:
                 continue
+                
+            #print(i, color_image.shape, depth_image.shape)
                 
             cv2.imshow("Device {}".format(i), image)
             key = cv2.waitKey(1)
@@ -145,14 +148,18 @@ def rendering_frames():
 def start_streams(pipelines: List[Pipeline], configs: List[Config]):
     index = 0
     for pipeline, config in zip(pipelines, configs):
-        pipeline.start(
-            config,
-            lambda frame_set, curr_index=index: on_new_frame_callback(
-                frame_set, curr_index
-            ),
-        )
-        index += 1
-
+        try:
+            pipeline.start(
+                config,
+                lambda frame_set, curr_index=index: on_new_frame_callback(
+                    frame_set, curr_index
+                ),
+            )
+            pipeline.start_recording(str(index)+".bag")
+            index += 1
+        except Exception as e:
+            print(e)
+            return        
 
 def stop_streams(pipelines: List[Pipeline]):
     for pipeline in pipelines:
@@ -193,12 +200,8 @@ def main():
     global has_color_sensor
     for i in range(device_list.get_count()):
         
-        # get the current device
-        device = device_list.get_device_by_index(i)
-        
-        # initialize pipeline for current device
+        device = device_list.get_device_by_index(i)        
         pipeline = Pipeline(device)
-        
         config = Config()
         
         # get the sync configuration json file for the current device
@@ -216,6 +219,70 @@ def main():
         print(f"Device {serial_number} sync config: {sync_config}")
         device.set_multi_device_sync_config(sync_config)
         
+        # # # # # # # # # # # # # # # #
+        # set color and profile list  #
+        # # # # # # # # # # # # # # # #
+        
+        try:
+            
+            profile_list = pipeline.get_stream_profile_list(OBSensorType.COLOR_SENSOR)
+            assert profile_list is not None
+            color_profile = profile_list.get_video_stream_profile(1280, 720, OBFormat.MJPG, 15)
+            config.enable_stream(color_profile)
+            has_color_sensor[i] = True
+            
+            profile_list = pipeline.get_stream_profile_list(OBSensorType.DEPTH_SENSOR)
+            assert profile_list is not None
+            depth_profile = profile_list.get_default_video_stream_profile()
+            config.enable_stream(depth_profile)
+        
+            # color profile : 1920x1080@15_OBFormat.MJPG
+            print("color profile : {}x{}@{}_{}".format(color_profile.get_width(),
+                                                       color_profile.get_height(),
+                                                       color_profile.get_fps(),
+                                                       color_profile.get_format()))
+            # depth profile : 640x576@15_OBFormat.Y16
+            print("depth profile : {}x{}@{}_{}".format(depth_profile.get_width(),
+                                                       depth_profile.get_height(),
+                                                       depth_profile.get_fps(),
+                                                       depth_profile.get_format()))
+        except Exception as e:
+            print(e)
+            return
+
+        # # # # # # # # # # # # #
+        # align configurations  #
+        # # # # # # # # # # # # #
+        
+        device      = pipeline.get_device()
+        device_info = device.get_device_info()
+        device_pid  = device_info.get_pid()
+        
+        align_mode = "HW"
+        if align_mode == 'HW':
+            if device_pid == 0x066B:
+                # Femto Mega does not support hardware D2C, and it is changed to software D2C
+                config.set_align_mode(OBAlignMode.SW_MODE)
+            else:
+                config.set_align_mode(OBAlignMode.HW_MODE)
+        elif align_mode == 'SW':
+            config.set_align_mode(OBAlignMode.SW_MODE)
+        else:
+            print("Cannot align rgbd!")
+            sys.exit()
+
+        # # # # #
+        # sync  #
+        # # # # #
+        
+        enable_sync = 1
+        if enable_sync:
+            try:
+                pipeline.enable_frame_sync()
+            except Exception as e:
+                print(e)
+        
+        """
         try:
             profile_list = pipeline.get_stream_profile_list(OBSensorType.COLOR_SENSOR)
             color_profile: VideoStreamProfile = (
@@ -223,6 +290,7 @@ def main():
             )
             config.enable_stream(color_profile)
             has_color_sensor[i] = True
+            
         except OBError as e:
             print(e)
             sys.exit()
@@ -231,7 +299,8 @@ def main():
         profile_list = pipeline.get_stream_profile_list(OBSensorType.DEPTH_SENSOR)
         depth_profile = profile_list.get_default_video_stream_profile()
         config.enable_stream(depth_profile)
-        config.enable_stream(depth_profile)
+        """        
+        
         pipelines.append(pipeline)
         configs.append(config)
     global stop_rendering
