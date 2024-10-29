@@ -15,10 +15,10 @@
 # ******************************************************************************
 import argparse
 import sys
-
+import os
 import cv2
 import numpy as np
-
+from pathlib import Path
 from pyorbbecsdk import *
 from utils import frame_to_bgr_image
 
@@ -32,6 +32,7 @@ def main(argv):
     parser.add_argument("-m", "--mode", help="align mode, HW=hardware mode,SW=software mode,NONE=disable align", type=str, default='HW')
     parser.add_argument("-s", "--enable_sync", help="enable sync", action="store_false", default=True)
     parser.add_argument("--save_filename", type=str, required=True)
+    parser.add_argument("--save_cam_K_filename", type=str, required=True)
     args = parser.parse_args()
     align_mode  = args.mode
     enable_sync = args.enable_sync
@@ -71,6 +72,7 @@ def main(argv):
         
         # set depth profile
         depth_profile = profile_list.get_default_video_stream_profile()
+        #depth_profile = profile_list.get_video_stream_profile(640, 576, OBFormat.Y16, 30)
         assert depth_profile is not None
         
         # color profile : 1920x1080@15_OBFormat.MJPG
@@ -128,6 +130,7 @@ def main(argv):
     
     try:
         pipeline.start(config)
+        Path(os.path.dirname(args.save_filename)).mkdir(parents=True, exist_ok=True)
         pipeline.start_recording(args.save_filename)
     except Exception as e:
         print(e)
@@ -135,6 +138,16 @@ def main(argv):
     
     camera_param = pipeline.get_camera_param()
     print("Camera param: ", camera_param)
+    fx = camera_param.depth_intrinsic.fx
+    fy = camera_param.depth_intrinsic.fy
+    cx = camera_param.depth_intrinsic.cx
+    cy = camera_param.depth_intrinsic.cy
+    # Forming the intrinsic matrix K
+    K = np.array([[fx, 0,  cx],
+                  [0,  fy, cy],
+                  [0,  0,  1]])
+    with open(args.save_cam_K_filename, "w") as f:
+        np.savetxt(f, K, fmt="%.12e")
     
     while True:
         try:

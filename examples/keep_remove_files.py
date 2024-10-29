@@ -5,7 +5,7 @@ import argparse
 
 from glob import glob
 from pathlib import Path
-from natsort import natsorted
+#from natsort import natsorted
 
 if __name__ == "__main__":
     
@@ -16,10 +16,10 @@ if __name__ == "__main__":
     parser.add_argument("--output_folder", type=str, default="output", help="Folder where filtered files will be copied")
     args = parser.parse_args()
     
-    color_image = natsorted(glob(os.path.join(args.foldername, "color_image", "*")))
-    depth_image = natsorted(glob(os.path.join(args.foldername, "depth_image", "*")))
-    depth_raw = natsorted(glob(os.path.join(args.foldername, "depth_raw", "*")))
-    point_cloud = natsorted(glob(os.path.join(args.foldername, "point_cloud", "*")))
+    rgb         = sorted(glob(os.path.join(args.foldername, "rgb", "*")))
+    depth_image = sorted(glob(os.path.join(args.foldername, "depth_image", "*")))
+    depth       = sorted(glob(os.path.join(args.foldername, "depth", "*")))
+    point_cloud = sorted(glob(os.path.join(args.foldername, "point_cloud", "*")))
     
     # Create output folder if it doesn't exist
     Path(args.output_folder).mkdir(parents=True, exist_ok=True)
@@ -41,16 +41,17 @@ if __name__ == "__main__":
             exit(1)
         
     if args.mode == "keep":
-        # Get the indices corresponding to the filenames based on the parsed keep list
-        idxs = [i for i, img in enumerate(color_image) if int(os.path.basename(img).replace(".png", "")) in keep]
+        
+        # Get the indices corresponding to the filenames based on the parsed keep list        
+        idxs = [i for i, img in enumerate(rgb) if int(os.path.basename(img).split('-')[0].lstrip('0')) in keep]
         
         print(f"Keeping files at indices: {idxs}")
         
-        # Copy selected files from each folder (color_image, depth_image, depth_raw, point_cloud)
+        # Copy selected files from each folder (rgb, depth_image, depth, point_cloud)
         for i in idxs:
             # Copy color image
-            color_src = color_image[i]
-            color_dst = os.path.join(args.output_folder, "color_image", os.path.basename(color_src))
+            color_src = rgb[i]
+            color_dst = os.path.join(args.output_folder, "rgb", os.path.basename(color_src))
             Path(os.path.dirname(color_dst)).mkdir(parents=True, exist_ok=True)  # Create directory if not exists
             shutil.copy(color_src, color_dst)
             print(f"Copied {color_src} to {color_dst}")
@@ -63,8 +64,8 @@ if __name__ == "__main__":
             print(f"Copied {depth_src} to {depth_dst}")
             
             # Copy depth raw data
-            raw_src = depth_raw[i]
-            raw_dst = os.path.join(args.output_folder, "depth_raw", os.path.basename(raw_src))
+            raw_src = depth[i]
+            raw_dst = os.path.join(args.output_folder, "depth", os.path.basename(raw_src))
             Path(os.path.dirname(raw_dst)).mkdir(parents=True, exist_ok=True)  # Create directory if not exists
             shutil.copy(raw_src, raw_dst)
             print(f"Copied {raw_src} to {raw_dst}")
@@ -75,3 +76,4 @@ if __name__ == "__main__":
             Path(os.path.dirname(cloud_dst)).mkdir(parents=True, exist_ok=True)  # Create directory if not exists
             shutil.copy(cloud_src, cloud_dst)
             print(f"Copied {cloud_src} to {cloud_dst}")
+            print()

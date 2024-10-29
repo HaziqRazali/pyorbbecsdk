@@ -13,6 +13,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 # ******************************************************************************
+import argparse
 import json
 import os
 from queue import Queue
@@ -21,6 +22,7 @@ from typing import List
 import cv2
 import numpy as np
 
+from pathlib import Path
 from pyorbbecsdk import *
 from utils import frame_to_bgr_image
 
@@ -145,7 +147,7 @@ def rendering_frames():
                 return
 
 
-def start_streams(pipelines: List[Pipeline], configs: List[Config]):
+def start_streams(pipelines: List[Pipeline], configs: List[Config], save_foldername):
     index = 0
     for pipeline, config in zip(pipelines, configs):
         try:
@@ -155,7 +157,7 @@ def start_streams(pipelines: List[Pipeline], configs: List[Config]):
                     frame_set, curr_index
                 ),
             )
-            pipeline.start_recording(str(index)+".bag")
+            pipeline.start_recording(os.path.join(save_foldername,str(index)+".bag"))
             index += 1
         except Exception as e:
             print(e)
@@ -176,6 +178,10 @@ def read_config(config_file: str):
 
 
 def main():
+    
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--save_foldername", type=str, required=True)
+    args = parser.parse_args()
     
     # config file path
     # ../config/multi_device_sync_config.json
@@ -304,7 +310,8 @@ def main():
         pipelines.append(pipeline)
         configs.append(config)
     global stop_rendering
-    start_streams(pipelines, configs)
+    Path(args.save_foldername).mkdir(parents=True, exist_ok=True)
+    start_streams(pipelines, configs, args.save_foldername)
     try:
         rendering_frames()
         stop_streams(pipelines)

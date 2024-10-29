@@ -45,7 +45,7 @@ def get_color_frame(frames):
 
 
 def main():
-    pipeline = Pipeline("./test.bag")
+    pipeline = Pipeline("/home/haziq/datasets/collab_ai/data/recordings/moving_occluding_objects/bags/0.bag")
     playback = pipeline.get_playback()
     playback.set_playback_state_callback(playback_state_callback)
     device_info = playback.get_device_info()

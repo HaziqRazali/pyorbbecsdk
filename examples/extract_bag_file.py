@@ -32,6 +32,8 @@ def get_color_frame(frames):
     color_frame = frames.get_color_frame()
     if color_frame is None:
         return None
+    #print(color_frame.get_timestamp())
+    #sys.exit()
     color_image = frame_to_bgr_image(color_frame)
     if color_image is None:
         print("failed to convert frame to image")
@@ -46,6 +48,7 @@ def playback_state_callback(state):
     elif state == OBMediaState.OB_MEDIA_PAUSED:
         print("Bag player paused")
 
+"""
 def save_points_to_ply(frames: FrameSet, camera_param: OBCameraParam, i, save_folder) -> int:
     
     print(f"Saving frame {i} point_cloud to file")
@@ -76,7 +79,7 @@ def save_points_to_ply(frames: FrameSet, camera_param: OBCameraParam, i, save_fo
     points_filename = os.path.join(save_folder, "point_cloud", f"{depth_frame.get_timestamp()}.ply")
 
     el = PlyElement.describe(points_array, 'vertex')
-    PlyData([el], text=True).write(points_filename)
+    PlyData([el], text=True).write(points_filename)"""
 
 def process_frame(i, frames, camera_param, save_folder):
     print(f"Processing Frame {i}")
@@ -84,14 +87,21 @@ def process_frame(i, frames, camera_param, save_folder):
     if frames is None:
         return f"Frame {i} is None"
 
-    depth_frame = frames.get_depth_frame()
+    # get depth frame
+    depth_frame     = frames.get_depth_frame()
+    #print("depth_timestamp:", depth_timestamp); sys.exit()
     if depth_frame is None:
         return f"Frame {i} has no depth image"
+    depth_timestamp = frames.get_depth_frame().get_timestamp()
 
-    color_image = get_color_frame(frames)
+    # get color frame
+    color_image     = get_color_frame(frames)
+    #print("color_timestamp:", color_timestamp); sys.exit()
     if color_image is None:
         return f"Frame {i} has no color image"
+    color_timestamp = frames.get_color_frame().get_timestamp()
 
+    # get point cloud
     points = frames.get_point_cloud(camera_param)
     if len(points) == 0:
         return f"Frame {i} has no depth points"
@@ -99,48 +109,58 @@ def process_frame(i, frames, camera_param, save_folder):
     # assert dimensions
     depth_width, depth_height, scale = depth_frame.get_width(), depth_frame.get_height(), depth_frame.get_depth_scale()
     color_width, color_height = color_image.shape[1], color_image.shape[0]
-    assert depth_width == color_width
+    assert depth_width  == color_width
     assert depth_height == color_height
 
-    # save point cloud
-    points_array = np.array([tuple(point) for point in points], dtype=[('x', 'f4'), ('y', 'f4'), ('z', 'f4')])
-    points_filename = os.path.join(save_folder, "point_cloud", f"{depth_frame.get_timestamp()}.ply")
-    el = PlyElement.describe(points_array, 'vertex')
-    PlyData([el], text=True).write(points_filename)
-    
-    print(depth_frame.get_timestamp())
-    timestamp_seconds = depth_frame.get_timestamp() / 1e6  # Convert to seconds
-    readable_time = datetime.datetime.utcfromtimestamp(timestamp_seconds)
-    print(readable_time)
+    # save color
+    cv2.imwrite(os.path.join(save_folder, "rgb",            f"{i:05d}-{color_timestamp}.png"), color_image)
 
+    # save point cloud with color
+    points_array = []
+    for j, point in enumerate(points):
+        x, y, z = point
+        # Get color at the corresponding depth point
+        r, g, b = color_image[j // depth_width, j % depth_width]
+        points_array.append((x, y, z, r, g, b))
+
+    points_array_np = np.array(points_array, dtype=[('x', 'f4'), ('y', 'f4'), ('z', 'f4'), ('red', 'u1'), ('green', 'u1'), ('blue', 'u1')])
+    points_filename = os.path.join(save_folder, "point_cloud", f"{i:05d}-{depth_timestamp}.ply")
+    el = PlyElement.describe(points_array_np, 'vertex')
+    PlyData([el], text=True).write(points_filename)
+
+    """
+    # save point cloud
+    points_array    = np.array([tuple(point) for point in points], dtype=[('x', 'f4'), ('y', 'f4'), ('z', 'f4')])
+    points_filename = os.path.join(save_folder, "point_cloud", f"{i:05d}-{depth_timestamp}.ply")
+    el              = PlyElement.describe(points_array, 'vertex')
+    PlyData([el], text=True).write(points_filename)
+    """
+    
     # save depth
     depth_data  = np.frombuffer(depth_frame.get_data(), dtype=np.uint16)
     depth_raw   = depth_data.reshape((depth_height, depth_width))         
     depth_image = depth_raw.astype(np.float32) * scale
     depth_image = cv2.normalize(depth_image, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
     depth_image = cv2.applyColorMap(depth_image, cv2.COLORMAP_JET)
-    cv2.imwrite(os.path.join(save_folder, "depth_raw", f"{i}.png"), depth_raw)
-    cv2.imwrite(os.path.join(save_folder, "depth_image", f"{i}.png"), depth_image)
-
-    # save color
-    cv2.imwrite(os.path.join(save_folder, "color_image", f"{i}.png"), color_image)
-    
+    cv2.imwrite(os.path.join(save_folder, "depth",          f"{i:05d}-{depth_timestamp}.png"), depth_raw)
+    cv2.imwrite(os.path.join(save_folder, "depth_image",    f"{i:05d}-{depth_timestamp}.png"), depth_image)
     return f"Frame {i} processed successfully"
 
 def main():
     
     parser = argparse.ArgumentParser()
+    parser.add_argument("--bag_filename", type=str, required=True)
     parser.add_argument("--save_folder", type=str, required=True)
     parser.add_argument("--threads", type=int, default=os.cpu_count(), help="Number of threads for parallel processing")
     args = parser.parse_args()
     
     # create save folder
-    Path(os.path.join(args.save_folder,"depth_raw")).mkdir(parents=True, exist_ok=True)
+    Path(os.path.join(args.save_folder,"depth")).mkdir(parents=True, exist_ok=True)
     Path(os.path.join(args.save_folder,"depth_image")).mkdir(parents=True, exist_ok=True)
-    Path(os.path.join(args.save_folder,"color_image")).mkdir(parents=True, exist_ok=True)
+    Path(os.path.join(args.save_folder,"rgb")).mkdir(parents=True, exist_ok=True)
     Path(os.path.join(args.save_folder,"point_cloud")).mkdir(parents=True, exist_ok=True)
     
-    pipeline = Pipeline("./test.bag")
+    pipeline = Pipeline(args.bag_filename)
     playback = pipeline.get_playback()
     playback.set_playback_state_callback(playback_state_callback)
     device_info = playback.get_device_info()
