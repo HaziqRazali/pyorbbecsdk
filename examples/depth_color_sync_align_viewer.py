@@ -26,6 +26,9 @@ ESC_KEY = 27
 
 
 def main(argv):
+    
+    # python3 examples/depth_color_sync_align_viewer.py --save_filename "/home/haziq/datasets/collab_ai/data/recordings/fps_15/bags/0.bag" --save_cam_K_filename "/home/haziq/datasets/collab_ai/data/recordings/fps_15/cam_K.txt"
+    
     pipeline = Pipeline()
     config = Config()
     parser = argparse.ArgumentParser()
@@ -33,6 +36,8 @@ def main(argv):
     parser.add_argument("-s", "--enable_sync", help="enable sync", action="store_false", default=True)
     parser.add_argument("--save_filename", type=str, required=True)
     parser.add_argument("--save_cam_K_filename", type=str, required=True)
+    parser.add_argument("--color_fps", type=int, required=True)
+    parser.add_argument("--depth_fps", type=int, required=True)
     args = parser.parse_args()
     align_mode  = args.mode
     enable_sync = args.enable_sync
@@ -41,38 +46,37 @@ def main(argv):
     
     try:
                 
-        # # # # # # # # # # # # # # # # # #
-        # get and set color profile list  #
-        # # # # # # # # # # # # # # # # # #
+        #################### get and set color profile list
         
         # get color profile_list
+        # 09/12 03:20:56.596796][info][376419][VideoSensor.cpp:386]  - {type: OB_STREAM_COLOR, format: OB_FORMAT_BGRA, width: 2560, height: 1440, fps: 30}
+        # 09/12 03:20:56.596799][info][376419][VideoSensor.cpp:386]  - {type: OB_STREAM_COLOR, format: OB_FORMAT_BGRA, width: 2560, height: 1440, fps: 25}
         profile_list = pipeline.get_stream_profile_list(OBSensorType.COLOR_SENSOR)
-        #09/12 03:20:56.596796][info][376419][VideoSensor.cpp:386]  - {type: OB_STREAM_COLOR, format: OB_FORMAT_BGRA, width: 2560, height: 1440, fps: 30}
-        #09/12 03:20:56.596799][info][376419][VideoSensor.cpp:386]  - {type: OB_STREAM_COLOR, format: OB_FORMAT_BGRA, width: 2560, height: 1440, fps: 25}
         
+        # set a different color profile list
         if 1:
-            # set a different color profile list
-            color_profile = profile_list.get_video_stream_profile(1280, 720, OBFormat.MJPG, 15)
+            #color_profile = profile_list.get_video_stream_profile(1280, 720, OBFormat.MJPG, 30)
+            color_profile = profile_list.get_video_stream_profile(1280, 720, OBFormat.MJPG, args.color_fps)
             config.enable_stream(color_profile)
             
+        # set default color profile list
         if 0:
-            # set default color profile list
             color_profile = profile_list.get_default_video_stream_profile()
             config.enable_stream(color_profile)
         
-        # # # # # # # # # # # # # # # # # #
-        # get and set depth profile list  #
-        # # # # # # # # # # # # # # # # # ##
+        #################### get and set depth profile list
         
         # get depth profile
+        # 09/12 03:20:56.597067][info][376419][VideoSensor.cpp:386]  - {type: OB_STREAM_DEPTH, format: OB_FORMAT_Y16, width: 640, height: 576, fps: 15}
+        # 09/12 03:20:56.597069][info][376419][VideoSensor.cpp:386]  - {type: OB_STREAM_DEPTH, format: OB_FORMAT_Y16, width: 1024, height: 1024, fps: 15}
         profile_list = pipeline.get_stream_profile_list(OBSensorType.DEPTH_SENSOR)
         assert profile_list is not None
-        #09/12 03:20:56.597067][info][376419][VideoSensor.cpp:386]  - {type: OB_STREAM_DEPTH, format: OB_FORMAT_Y16, width: 640, height: 576, fps: 15}
-        #09/12 03:20:56.597069][info][376419][VideoSensor.cpp:386]  - {type: OB_STREAM_DEPTH, format: OB_FORMAT_Y16, width: 1024, height: 1024, fps: 15}
         
         # set depth profile
-        depth_profile = profile_list.get_default_video_stream_profile()
+        #depth_profile = profile_list.get_default_video_stream_profile()
         #depth_profile = profile_list.get_video_stream_profile(640, 576, OBFormat.Y16, 30)
+        depth_profile = profile_list.get_video_stream_profile(640, 576, OBFormat.Y16, args.depth_fps)
+        
         assert depth_profile is not None
         
         # color profile : 1920x1080@15_OBFormat.MJPG

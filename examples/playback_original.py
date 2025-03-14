@@ -16,6 +16,7 @@
 import sys
 
 import cv2
+import argparse
 import numpy as np
 
 from pyorbbecsdk import *
@@ -45,7 +46,14 @@ def get_color_frame(frames):
 
 
 def main():
-    pipeline = Pipeline("/home/haziq/datasets/collab_ai/data/recordings/moving_occluding_objects/bags/0.bag")
+        
+    # python3 examples/playback_original.py --bag_filename "/home/haziq/datasets/collab_ai/data/recordings/fps_30/bags/0.bag"
+        
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--bag_filename", type=str)
+    args = parser.parse_args()
+    
+    pipeline = Pipeline(args.bag_filename)
     playback = pipeline.get_playback()
     playback.set_playback_state_callback(playback_state_callback)
     device_info = playback.get_device_info()
